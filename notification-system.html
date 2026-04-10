@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通知系统架构图 v3</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e2d3d;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --orange: #F26419;
+    --orange-glow: rgba(242,100,25,0.15);
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.12);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.12);
+    --yellow: #eab308;
+    --yellow-dim: rgba(234,179,8,0.12);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.12);
+    --cyan: #06b6d4;
+    --cyan-dim: rgba(6,182,212,0.12);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans SC',sans-serif; min-height:100vh; padding:40px 20px; }
+  .container { max-width:1100px; margin:0 auto; }
+
+  h1 { font-size:28px; font-weight:700; text-align:center; margin-bottom:4px;
+    background:linear-gradient(135deg,var(--orange),#ff8a50); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .version { text-align:center; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--orange); margin-bottom:4px; }
+  .subtitle { text-align:center; color:var(--text-dim); font-size:12px; font-family:'JetBrains Mono',monospace; margin-bottom:48px; }
+
+  .section-title { font-size:18px; font-weight:700; margin-bottom:24px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:''; width:4px; height:22px; background:var(--orange); border-radius:2px; }
+
+  /* ===== Architecture ===== */
+  .arch-box { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:36px 28px; margin-bottom:48px; position:relative; overflow:hidden; }
+  .arch-box::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--orange),transparent); }
+
+  .arch-grid { display:grid; grid-template-columns:160px 1fr 160px; gap:20px; align-items:start; }
+  .arch-col { display:flex; flex-direction:column; gap:12px; }
+  .arch-col-label { font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-dim); text-transform:uppercase; letter-spacing:2px; text-align:center; margin-bottom:2px; }
+
+  .arch-node { border-radius:10px; padding:12px 14px; text-align:center; font-size:12px; font-weight:600; }
+  .arch-node-sub { font-size:10px; color:var(--text-dim); font-weight:400; margin-top:3px; }
+  .arch-node.biz { background:var(--blue-dim); border:1px solid rgba(59,130,246,0.3); color:var(--blue); }
+  .arch-node.ext { background:var(--purple-dim); border:1px solid rgba(167,139,250,0.3); color:var(--purple); }
+
+  .ns-box { background:var(--surface2); border:1.5px solid var(--orange); border-radius:14px;
+    padding:20px 16px; position:relative; }
+  .ns-box::after { content:''; position:absolute; inset:-1px; border-radius:14px; background:var(--orange-glow); z-index:-1; filter:blur(20px); }
+  .ns-title { text-align:center; font-size:14px; font-weight:700; color:var(--orange); margin-bottom:14px; letter-spacing:1px; }
+
+  .ns-layer { border-radius:8px; padding:10px 12px; display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .ns-layer:last-child { margin-bottom:0; }
+  .ns-icon { width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0; }
+  .ns-name { font-size:12px; font-weight:600; }
+  .ns-desc { font-size:9px; color:var(--text-dim); margin-top:1px; }
+
+  .l-api { background:rgba(59,130,246,0.06); } .l-api .ns-icon { background:var(--blue-dim); color:var(--blue); } .l-api .ns-name { color:var(--blue); }
+  .l-db { background:rgba(234,179,8,0.06); } .l-db .ns-icon { background:var(--yellow-dim); color:var(--yellow); } .l-db .ns-name { color:var(--yellow); }
+  .l-worker { background:rgba(242,100,25,0.06); } .l-worker .ns-icon { background:var(--orange-glow); color:var(--orange); } .l-worker .ns-name { color:var(--orange); }
+  .l-adapter { background:rgba(167,139,250,0.06); } .l-adapter .ns-icon { background:var(--purple-dim); color:var(--purple); } .l-adapter .ns-name { color:var(--purple); }
+  .l-dead { background:rgba(239,68,68,0.06); } .l-dead .ns-icon { background:var(--red-dim); color:var(--red); } .l-dead .ns-name { color:var(--red); }
+  .l-cb { background:rgba(34,197,94,0.06); } .l-cb .ns-icon { background:var(--green-dim); color:var(--green); } .l-cb .ns-name { color:var(--green); }
+  .l-mon { background:rgba(6,182,212,0.06); } .l-mon .ns-icon { background:var(--cyan-dim); color:var(--cyan); } .l-mon .ns-name { color:var(--cyan); }
+
+  /* ===== Flow ===== */
+  .flow-box { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:36px 20px; margin-bottom:48px; position:relative; overflow:hidden; }
+  .flow-box::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--green),transparent); }
+
+  .flow { display:flex; flex-direction:column; align-items:center; gap:0; }
+  .fn { border-radius:10px; padding:12px 20px; font-size:12px; font-weight:600; text-align:center; min-width:260px; position:relative; z-index:1; }
+  .fn small { display:block; font-size:10px; opacity:0.65; font-weight:400; margin-top:2px; }
+  .fn.start { background:var(--blue-dim); border:1px solid rgba(59,130,246,0.3); color:var(--blue); }
+  .fn.proc { background:var(--orange-glow); border:1px solid rgba(242,100,25,0.3); color:var(--orange); }
+  .fn.decide { background:var(--yellow-dim); border:1px solid rgba(234,179,8,0.3); color:var(--yellow); }
+  .fn.ok { background:var(--green-dim); border:1px solid rgba(34,197,94,0.3); color:var(--green); }
+  .fn.fail { background:var(--red-dim); border:1px solid rgba(239,68,68,0.3); color:var(--red); }
+  .fn.human { background:var(--purple-dim); border:1px solid rgba(167,139,250,0.3); color:var(--purple); }
+
+  .fc { width:2px; height:24px; background:var(--border); position:relative; }
+  .fc::after { content:'▼'; position:absolute; bottom:-7px; left:50%; transform:translateX(-50%); font-size:7px; color:var(--text-dim); }
+
+  .branch { display:flex; gap:20px; justify-content:center; width:100%; flex-wrap:wrap; }
+  .arm { display:flex; flex-direction:column; align-items:center; gap:0; flex:0 0 auto; min-width:180px; max-width:220px; }
+  .arm-label { font-size:10px; font-family:'JetBrains Mono',monospace; padding:3px 8px; border-radius:4px; margin-bottom:6px; }
+  .arm-label.yes { color:var(--green); background:var(--green-dim); }
+  .arm-label.retry { color:var(--yellow); background:var(--yellow-dim); }
+  .arm-label.exhaust { color:var(--red); background:var(--red-dim); }
+
+  /* ===== Protocol ===== */
+  .proto-box { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:32px; margin-bottom:48px; position:relative; overflow:hidden; }
+  .proto-box::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--blue),transparent); }
+
+  .proto-section { margin-bottom:24px; }
+  .proto-section:last-child { margin-bottom:0; }
+  .proto-label { font-size:13px; font-weight:700; margin-bottom:10px; }
+  .proto-label.blue { color:var(--blue); }
+  .proto-label.green { color:var(--green); }
+  .proto-label.cyan { color:var(--cyan); }
+
+  .code-block {
+    background:var(--bg); border:1px solid var(--border); border-radius:8px;
+    padding:16px; font-family:'JetBrains Mono',monospace; font-size:11px;
+    color:var(--text); line-height:1.7; overflow-x:auto; white-space:pre;
+  }
+  .code-block .kw { color:var(--orange); }
+  .code-block .str { color:var(--green); }
+  .code-block .cm { color:var(--text-dim); }
+  .code-block .key { color:var(--cyan); }
+
+  /* ===== Event Registry ===== */
+  .event-table { width:100%; border-collapse:collapse; margin-top:12px; }
+  .event-table th { text-align:left; font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text-dim);
+    padding:8px 12px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:1px; }
+  .event-table td { font-size:12px; padding:10px 12px; border-bottom:1px solid rgba(30,45,61,0.5); }
+  .event-table tr:hover td { background:rgba(255,255,255,0.02); }
+  .event-tag { font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 8px; border-radius:4px; display:inline-block; }
+  .tag-order { background:var(--blue-dim); color:var(--blue); }
+  .tag-pay { background:var(--green-dim); color:var(--green); }
+  .tag-ad { background:var(--orange-glow); color:var(--orange); }
+  .tag-crm { background:var(--purple-dim); color:var(--purple); }
+
+  /* ===== Detail boxes ===== */
+  .detail-box { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:32px; margin-bottom:48px; position:relative; overflow:hidden; }
+  .detail-box::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); }
+
+  .triage-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:16px; }
+  .triage-card { border-radius:10px; padding:16px; }
+  .triage-code { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; }
+  .triage-action { font-size:11px; margin-top:6px; }
+  .triage-desc { font-size:10px; color:var(--text-dim); margin-top:4px; }
+  .tc-retry { background:var(--yellow-dim); border:1px solid rgba(234,179,8,0.3); } .tc-retry .triage-code { color:var(--yellow); }
+  .tc-perm { background:var(--red-dim); border:1px solid rgba(239,68,68,0.3); } .tc-perm .triage-code { color:var(--red); }
+  .tc-unknown { background:var(--purple-dim); border:1px solid rgba(167,139,250,0.3); } .tc-unknown .triage-code { color:var(--purple); }
+
+  /* Callback states */
+  .proto-states { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-top:16px; }
+  .ps { border-radius:10px; padding:16px 18px; text-align:center; flex:1; min-width:150px; max-width:220px; }
+  .ps-name { font-size:14px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .ps-desc { font-size:10px; color:var(--text-dim); margin-top:6px; line-height:1.5; }
+  .ps-action { font-size:9px; margin-top:8px; padding:3px 8px; border-radius:4px; display:inline-block; }
+  .ps.del { background:var(--green-dim); border:1px solid rgba(34,197,94,0.3); }
+  .ps.del .ps-name { color:var(--green); } .ps.del .ps-action { background:rgba(34,197,94,0.15); color:var(--green); }
+  .ps.hdl { background:var(--yellow-dim); border:1px solid rgba(234,179,8,0.3); }
+  .ps.hdl .ps-name { color:var(--yellow); } .ps.hdl .ps-action { background:rgba(234,179,8,0.15); color:var(--yellow); }
+  .ps.fld { background:var(--red-dim); border:1px solid rgba(239,68,68,0.3); }
+  .ps.fld .ps-name { color:var(--red); } .ps.fld .ps-action { background:rgba(239,68,68,0.15); color:var(--red); }
+
+  /* Evolution */
+  .evo-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+  .evo-card { border-radius:10px; padding:16px; background:var(--surface2); border:1px solid var(--border); }
+  .evo-ver { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:700; color:var(--orange); }
+  .evo-desc { font-size:11px; color:var(--text); margin-top:6px; line-height:1.5; }
+  .evo-trigger { font-size:10px; color:var(--text-dim); margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+  .evo-card.current { border-color:var(--orange); }
+
+  .footer { text-align:center; margin-top:48px; font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; }
+  .footer span { color:var(--orange); }
+
+  @media(max-width:768px) {
+    .arch-grid { grid-template-columns:1fr; }
+    .branch { flex-direction:column; align-items:center; }
+    .evo-grid { grid-template-columns:1fr 1fr; }
+    .triage-grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>通知系统设计</h1>
+<div class="version">v3 — 纯 DB 架构 · 含通讯协议 · 无 Redis · 无 SLA</div>
+<div class="subtitle">Architecture · Protocol · Flow · Evolution</div>
+
+<!-- ========== 1. ARCHITECTURE ========== -->
+<div class="section-title">一、系统架构图</div>
+<div class="arch-box">
+  <div class="arch-grid">
+    <div class="arch-col">
+      <div class="arch-col-label">业务模块</div>
+      <div class="arch-node biz">🛒 订单模块<div class="arch-node-sub">order.payment_success</div></div>
+      <div class="arch-node biz">💳 支付模块<div class="arch-node-sub">payment.subscription_paid</div></div>
+      <div class="arch-node biz">📢 广告模块<div class="arch-node-sub">ad.user_registered</div></div>
+      <div class="arch-node biz">👤 CRM 模块<div class="arch-node-sub">crm.contact_updated</div></div>
+    </div>
+
+    <div>
+      <div class="arch-col-label">通知服务（V1 只依赖数据库）</div>
+      <div class="ns-box">
+        <div class="ns-title">⚡ Notification Service</div>
+        <div class="ns-layer l-api">
+          <div class="ns-icon">📥</div>
+          <div><div class="ns-name">API 接入层</div><div class="ns-desc">参数校验 · event_type 路由 · 同步写 DB · 返回 202</div></div>
+        </div>
+        <div class="ns-layer l-db">
+          <div class="ns-icon">📋</div>
+          <div><div class="ns-name">Outbox 持久化</div><div class="ns-desc">notifications 表 · 状态机 · SELECT FOR UPDATE SKIP LOCKED</div></div>
+        </div>
+        <div class="ns-layer l-worker">
+          <div class="ns-icon">⚙️</div>
+          <div><div class="ns-name">Delivery Worker（per-provider 隔离）</div><div class="ns-desc">1s 轮询 · 指数退避 · 熔断：连续失败10次暂停5min</div></div>
+        </div>
+        <div class="ns-layer l-adapter">
+          <div class="ns-icon">🔌</div>
+          <div><div class="ns-name">Provider Adapter</div><div class="ns-desc">event_type → provider 映射 · template | custom · is_success</div></div>
+        </div>
+        <div class="ns-layer l-dead">
+          <div class="ns-icon">💀</div>
+          <div><div class="ns-name">死信分级引擎</div><div class="ns-desc">503→自动重入队 · 401→标记失败 · unknown→人工工单</div></div>
+        </div>
+        <div class="ns-layer l-cb">
+          <div class="ns-icon">📞</div>
+          <div><div class="ns-name">Callback Worker</div><div class="ns-desc">独立回调通道 · 终态回调业务方 · 轻量重试2次</div></div>
+        </div>
+        <div class="ns-layer l-mon">
+          <div class="ns-icon">📊</div>
+          <div><div class="ns-name">查询接口 + 死信看板</div><div class="ns-desc">GET /notifications/{id}/status · 批量重发 · 结构化日志</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arch-col">
+      <div class="arch-col-label">外部供应商</div>
+      <div class="arch-node ext">🎯 广告平台 API<div class="arch-node-sub">POST /callback</div></div>
+      <div class="arch-node ext">📇 CRM 供应商<div class="arch-node-sub">PUT /contacts</div></div>
+      <div class="arch-node ext">📦 库存系统<div class="arch-node-sub">POST /inventory</div></div>
+      <div class="arch-node ext">🔔 其他第三方<div class="arch-node-sub">各自协议格式</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 2. PROTOCOL ========== -->
+<div class="section-title">二、业务方 ↔ 通知系统 通讯协议</div>
+<div class="proto-box">
+
+  <div class="proto-section">
+    <div class="proto-label blue">2.1 请求协议 — 业务方 → 通知系统</div>
+    <div class="code-block"><span class="kw">POST</span> /notifications
+<span class="key">Content-Type</span>: application/json
+
+{
+  <span class="key">"event_type"</span>:    <span class="str">"order.payment_success"</span>,   <span class="cm">// 必填，事件类型，决定路由到哪个 provider</span>
+  <span class="key">"biz_id"</span>:        <span class="str">"order_20260410_001"</span>,       <span class="cm">// 必填，业务唯一ID，用于幂等去重</span>
+  <span class="key">"payload"</span>:        { ... },                       <span class="cm">// 必填，业务数据，透传给 Adapter 构建请求</span>
+  <span class="key">"callback_url"</span>:   <span class="str">"http://order-svc/callback"</span>, <span class="cm">// 可选，不传则不回调</span>
+  <span class="key">"priority"</span>:       <span class="str">0</span>                              <span class="cm">// 可选，默认0，数字越大越优先</span>
+}
+
+<span class="kw">→ 202 Accepted</span>
+{ <span class="key">"request_id"</span>: <span class="str">"req_abc123"</span> }</div>
+  </div>
+
+  <div class="proto-section">
+    <div class="proto-label cyan">2.2 事件类型注册表 — event_type → provider 映射</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">业务方与通知系统约定事件类型，通知系统据此路由到对应供应商。新增事件需双方协商后在配置中心注册。</div>
+    <table class="event-table">
+      <thead>
+        <tr><th>event_type</th><th>业务模块</th><th>目标 provider</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="event-tag tag-order">order.payment_success</span></td>
+          <td>订单模块</td><td>inventory_system</td><td>支付成功 → 通知库存扣减</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag tag-pay">payment.subscription_paid</span></td>
+          <td>支付模块</td><td>crm_vendor</td><td>订阅付款 → 通知 CRM 更新状态</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag tag-ad">ad.user_registered</span></td>
+          <td>广告模块</td><td>ad_platform</td><td>用户注册 → 通知广告平台归因</td>
+        </tr>
+        <tr>
+          <td><span class="event-tag tag-crm">crm.contact_updated</span></td>
+          <td>CRM 模块</td><td>crm_vendor</td><td>联系人变更 → 同步到外部 CRM</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="proto-section">
+    <div class="proto-label green">2.3 回调协议 — 通知系统 → 业务方</div>
+    <div class="code-block"><span class="kw">POST</span> {callback_url}
+<span class="key">Content-Type</span>: application/json
+<span class="key">X-Notify-Signature</span>: hmac-sha256(body, secret)
+
+{
+  <span class="key">"request_id"</span>:   <span class="str">"req_abc123"</span>,
+  <span class="key">"event_type"</span>:   <span class="str">"order.payment_success"</span>,
+  <span class="key">"biz_id"</span>:       <span class="str">"order_20260410_001"</span>,
+  <span class="key">"status"</span>:       <span class="str">"delivered"</span> | <span class="str">"handling"</span> | <span class="str">"failed"</span>,
+  <span class="key">"attempts"</span>:     3,
+  <span class="key">"finished_at"</span>:  <span class="str">"2026-04-10T15:30:00Z"</span>,
+  <span class="key">"error"</span>:        null | <span class="str">"504 Gateway Timeout"</span>
+}
+
+<span class="cm">// 业务方返回 200 → 回调成功</span>
+<span class="cm">// 其他 → 通知系统重试 2 次后放弃记日志</span></div>
+  </div>
+
+  <div class="proto-section">
+    <div class="proto-label blue">2.4 终态状态机</div>
+    <div class="proto-states">
+      <div class="ps del">
+        <div class="ps-name">delivered</div>
+        <div class="ps-desc">外部 API 确认接收<br>投递成功</div>
+        <div class="ps-action">→ 业务方无需操作</div>
+      </div>
+      <div class="ps hdl">
+        <div class="ps-name">handling</div>
+        <div class="ps-desc">重试耗尽 / 进入死信<br>通知系统团队跟进中</div>
+        <div class="ps-action">→ 业务方等待即可</div>
+      </div>
+      <div class="ps fld">
+        <div class="ps-name">failed</div>
+        <div class="ps-desc">确认第三方永久性故障<br>无法投递</div>
+        <div class="ps-action">→ 业务方自行决定补偿</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3. FLOW ========== -->
+<div class="section-title">三、投递流程图</div>
+<div class="flow-box">
+  <div class="flow">
+    <div class="fn start">📨 业务模块 POST /notifications<small>event_type + biz_id + payload + callback_url</small></div>
+    <div class="fc"></div>
+    <div class="fn proc">校验 event_type 是否已注册 · 写入 DB (pending)<small>biz_id 幂等去重 · event_type → provider 映射</small></div>
+    <div class="fc"></div>
+    <div class="fn start" style="min-width:280px">✅ 返回 202 Accepted + request_id<small>业务方流程结束，不再等待</small></div>
+    <div class="fc"></div>
+    <div class="fn proc">Worker 1s 轮询 · SELECT FOR UPDATE SKIP LOCKED<small>per-provider 隔离 · status → sending</small></div>
+    <div class="fc"></div>
+    <div class="fn proc">Adapter 构建请求 → 调用外部 API<small>event_type 决定用哪个 Adapter</small></div>
+    <div class="fc"></div>
+    <div class="fn decide">◆ Adapter.is_success(response) ?<small>HTTP 状态码 + 供应商自定义成功判定</small></div>
+    <div style="height:14px"></div>
+
+    <div class="branch">
+      <div class="arm">
+        <div class="arm-label yes">✓ 投递成功</div>
+        <div class="fc"></div>
+        <div class="fn ok">status → delivered</div>
+        <div class="fc"></div>
+        <div class="fn ok">Callback Worker 回调<small>status = delivered</small></div>
+      </div>
+      <div class="arm">
+        <div class="arm-label retry">↻ 失败 · 未耗尽</div>
+        <div class="fc"></div>
+        <div class="fn proc" style="min-width:auto">retry_count++<small>next_retry_at = 指数退避</small></div>
+        <div class="fc"></div>
+        <div class="fn decide" style="min-width:auto">30s → 2m → 10m → 1h<small>等待下次轮询触发</small></div>
+        <div class="fc"></div>
+        <div class="fn proc" style="min-width:auto;font-size:11px">↑ 回到 Worker 轮询</div>
+      </div>
+      <div class="arm">
+        <div class="arm-label exhaust">✗ 重试耗尽</div>
+        <div class="fc"></div>
+        <div class="fn fail">进入死信分级引擎</div>
+        <div class="fc"></div>
+        <div class="fn decide" style="min-width:auto">自动分级<small>503→重入队 / 401→failed / other→人工</small></div>
+        <div class="fc"></div>
+        <div class="fn fail" style="min-width:auto">回调业务方<small>status = handling</small></div>
+        <div class="fc"></div>
+        <div class="fn human" style="min-width:auto">🧑‍💻 人工协调第三方<small>解决后批量重发 → 回调 delivered</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 4. CONCURRENCY ========== -->
+<div class="section-title">四、并发控制</div>
+<div class="detail-box">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:8px;">SKIP LOCKED 取任务</div>
+      <div class="code-block"><span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> notifications
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+  <span class="kw">AND</span> next_retry_at &lt;= <span class="kw">NOW</span>()
+  <span class="kw">AND</span> provider = <span class="str">'ad_platform'</span>
+<span class="kw">ORDER BY</span> priority <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> 10
+<span class="kw">FOR UPDATE SKIP LOCKED</span>;
+
+<span class="cm">-- 被其他 Worker 锁住的行直接跳过</span>
+<span class="kw">UPDATE</span> ... <span class="kw">SET</span> status=<span class="str">'sending'</span>;
+<span class="kw">COMMIT</span>;</div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--cyan);margin-bottom:8px;">供应商隔离 + 熔断</div>
+      <div class="code-block"><span class="cm">-- Worker 按 provider 分组</span>
+worker-group-ad:      provider=ad_platform
+worker-group-crm:     provider=crm_vendor
+worker-group-default: 其余
+
+<span class="cm">-- A 挂了只影响 A 的 Worker</span>
+<span class="cm">-- B、C 正常投递不受影响</span>
+
+<span class="cm">-- 熔断策略</span>
+同一 provider 连续失败 <span class="str">10</span> 次
+→ 暂停该 provider <span class="str">5</span> 分钟
+→ 告警通知人工
+→ 避免轰击已宕机的服务</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 5. DEAD LETTER ========== -->
+<div class="section-title">五、死信自动分级</div>
+<div class="detail-box">
+  <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">重试耗尽后先自动分级，减少凌晨告警量</div>
+  <div class="triage-grid">
+    <div class="triage-card tc-retry">
+      <div class="triage-code">503 / 502 / Timeout</div>
+      <div class="triage-action">→ 自动重新入队，延迟 30min 再试</div>
+      <div class="triage-desc">对方临时不可用，仍有恢复可能</div>
+    </div>
+    <div class="triage-card tc-perm">
+      <div class="triage-code">401 / 403 / 404</div>
+      <div class="triage-action">→ 标记 failed · 回调业务方 · 告警运营</div>
+      <div class="triage-desc">鉴权失败或接口不存在，重试无意义</div>
+    </div>
+    <div class="triage-card tc-unknown">
+      <div class="triage-code">其他 / 响应体异常</div>
+      <div class="triage-action">→ 人工工单 · 协调第三方排查</div>
+      <div class="triage-desc">真正需要人介入的，量最小</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 6. EVOLUTION ========== -->
+<div class="section-title">六、演进路径</div>
+<div class="detail-box">
+  <div class="evo-grid">
+    <div class="evo-card current">
+      <div class="evo-ver">V1 ← 当前</div>
+      <div class="evo-desc">DB Outbox + 1s 轮询 + Adapter<br>只依赖数据库</div>
+      <div class="evo-trigger">起步方案，跑通核心链路</div>
+    </div>
+    <div class="evo-card">
+      <div class="evo-ver">V2</div>
+      <div class="evo-desc">引入 MQ<br>DB 降级为存档</div>
+      <div class="evo-trigger">QPS > 500 或 DB CPU > 70%</div>
+    </div>
+    <div class="evo-card">
+      <div class="evo-ver">V3</div>
+      <div class="evo-desc">管理后台 + SLA 定义<br>配置化模板引擎</div>
+      <div class="evo-trigger">供应商 > 10 · 运行数据充足</div>
+    </div>
+    <div class="evo-card">
+      <div class="evo-ver">V4</div>
+      <div class="evo-desc">租户隔离 + 限流<br>SLA 分级</div>
+      <div class="evo-trigger">多租户需求</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">AI 开发日记 · <span>Bob</span> — 通知系统设计 v3</div>
+</div>
+</body>
+</html>
