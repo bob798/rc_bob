@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>通知系统架构图 v3</title>
+<title>通知系统架构图</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;600;700&display=swap');
 
@@ -184,7 +184,7 @@
 <div class="container">
 
 <h1>通知系统设计</h1>
-<div class="version">v3 — 纯 DB 架构 · 含通讯协议 · 无 Redis · 无 SLA</div>
+<div class="version">纯 DB 架构 · 含通讯协议 · 无 Redis · 无 SLA</div>
 <div class="subtitle">Architecture · Protocol · Flow · Evolution</div>
 
 <!-- ========== 1. ARCHITECTURE ========== -->
@@ -192,11 +192,8 @@
 <div class="arch-box">
   <div class="arch-grid">
     <div class="arch-col">
-      <div class="arch-col-label">业务模块</div>
+      <div class="arch-col-label">业务模块（示例）</div>
       <div class="arch-node biz">🛒 订单模块<div class="arch-node-sub">order.payment_success</div></div>
-      <div class="arch-node biz">💳 支付模块<div class="arch-node-sub">payment.subscription_paid</div></div>
-      <div class="arch-node biz">📢 广告模块<div class="arch-node-sub">ad.user_registered</div></div>
-      <div class="arch-node biz">👤 CRM 模块<div class="arch-node-sub">crm.contact_updated</div></div>
     </div>
 
     <div>
@@ -472,7 +469,7 @@ worker-group-default: 其余
   </div>
 </div>
 
-<div class="footer">AI 开发日记 · <span>Bob</span> — 通知系统设计 v3</div>
+<div class="footer">AI 开发日记 · <span>Bob</span> — 通知系统设计</div>
 </div>
 </body>
 </html>
